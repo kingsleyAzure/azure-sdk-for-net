@@ -114,11 +114,19 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         [TearDown]
         public async Task FixtureTearDown()
         {
-            await _firstQueueScope.DisposeAsync();
-            await _secondQueueScope.DisposeAsync();
-            await _thirdQueueScope.DisposeAsync();
-            await _secondaryNamespaceQueueScope.DisposeAsync();
-            await _topicScope.DisposeAsync();
+            await CleanupTestScope(_firstQueueScope);
+            await CleanupTestScope(_secondQueueScope);
+            await CleanupTestScope(_thirdQueueScope);
+            await CleanupTestScope(_secondaryNamespaceQueueScope);
+            await CleanupTestScope(_topicScope);
+        }
+
+        private async Task CleanupTestScope(IAsyncDisposable disposable)
+        {
+            if (disposable != null)
+            {
+                await disposable.DisposeAsync();
+            }
         }
 
         protected IHost BuildHost<TJobClass>(
@@ -195,6 +203,33 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 messageObj.SessionId = sessionId;
             }
             await sender.SendMessageAsync(messageObj);
+        }
+
+        internal async Task WriteQueueMessages(string[] messages, string[] sessionIds = null, string connectionString = default, string queueName = default)
+        {
+            await using ServiceBusClient client = new ServiceBusClient(connectionString ?? ServiceBusTestEnvironment.Instance.ServiceBusConnectionString);
+            var sender = client.CreateSender(queueName ?? _firstQueueScope.QueueName);
+
+            ServiceBusMessageBatch batch = await sender.CreateMessageBatchAsync();
+            int sessionCounter = 0;
+            for (int i = 0; i < messages.Length; i++)
+            {
+                var message = new ServiceBusMessage(messages[i]);
+                message.ContentType = "application/text";
+
+                if (sessionIds != null && sessionIds.Length > 0)
+                {
+                    // evenly distribute the messages across sessions
+                    message.SessionId = sessionIds[sessionCounter++ % sessionIds.Length];
+                }
+
+                if (!batch.TryAddMessage(message))
+                {
+                    throw new InvalidOperationException("Unable to add message to batch.");
+                }
+            }
+
+            await sender.SendMessagesAsync(batch);
         }
 
         internal async Task WriteQueueMessage(TestPoco obj, string sessionId = null)
