@@ -8,7 +8,7 @@ namespace Microsoft.Azure.Management.Batch.Models
 {
     public partial class BatchAccountIdentity
     {
-        public BatchAccountIdentity(ResourceIdentityType type, string principalId = default(string), string tenantId = default(string), IDictionary<string, BatchAccountIdentityUserAssignedIdentitiesValue> userAssignedIdentities = default(IDictionary<string, BatchAccountIdentityUserAssignedIdentitiesValue>))
+        public BatchAccountIdentity(ResourceIdentityType type, string principalId, string tenantId, IDictionary<string, BatchAccountIdentityUserAssignedIdentitiesValue> userAssignedIdentities)
         : this(type, principalId, tenantId, userAssignedIdentities as IDictionary<string, UserAssignedIdentities>)
         {
         }
